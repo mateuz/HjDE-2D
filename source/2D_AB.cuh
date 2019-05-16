@@ -23,6 +23,7 @@ public:
 
 __device__ float _C( uint, uint );
 
-__global__ void computeK_2DAB(float * x, float * f);
+__global__ void computeK_2DAB_P(float * x, float * f);
+__global__ void computeK_2DAB_S(float * x, float * f);
 
 #endif

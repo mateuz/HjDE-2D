@@ -1,5 +1,4 @@
 #include "2D_AB.cuh"
-#include "IO.h"
 #include "constants.cuh"
 
 #include <iostream>
@@ -76,7 +75,7 @@ __device__ float _C( uint i, uint j ){
   return c;
 }
 
-__global__ void computeK_2DAB(float * x, float * f){
+__global__ void computeK_2DAB_P(float * x, float * f){
   uint id_p = blockIdx.x;
   uint id_d = threadIdx.x;
   uint ndim = params.n_dim;
@@ -194,7 +193,7 @@ __global__ void computeK_2DAB(float * x, float * f){
   }
 }
 
-__global__ void computeS(float *x, float *f){
+__global__ void computeK_2DAB_S(float *x, float *f){
    uint id_p = threadIdx.x + (blockIdx.x * blockDim.x);
    uint ps = params.ps;
 
@@ -240,8 +239,8 @@ __global__ void computeS(float *x, float *f){
 
 void F2DAB::compute(float * x, float * f){
   // computeK_2DAB<<< n_blocks, n_threads >>>(x, f);
-  computeK_2DAB<<< 200, 128 >>>(x, f);
-  // computeS<<<20, 10>>>(x,f);
+  computeK_2DAB_P<<< 200, 128 >>>(x, f);
+  // computeK_2DAB_S<<<20, 10>>>(x,f);
   // cudaDeviceSynchronize();
   checkCudaErrors(cudaGetLastError());
 }
