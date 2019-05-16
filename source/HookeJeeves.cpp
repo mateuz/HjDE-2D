@@ -60,39 +60,39 @@ HookeJeeves::~HookeJeeves(){
 }
 
 float HookeJeeves::evaluate(float * individual){
-	double a_ab,b_ab,c_ab,d_ab,v1,v2;
+  double a_ab,b_ab,c_ab,d_ab,v1,v2;
 
-	unsigned int i = 0, j = 0;
+  unsigned int i = 0, j = 0;
 
-	amino_pos[0].x = 0;
+  amino_pos[0].x = 0;
   amino_pos[0].y = 0;
-	amino_pos[1].x = 1;
-	amino_pos[1].y = 0;
+  amino_pos[1].x = 1;
+  amino_pos[1].y = 0;
 
-	for (i = 1; i < (nvars - 1); i++){
-		a_ab = amino_pos[i].x-amino_pos[i-1].x;
-		b_ab = amino_pos[i].y-amino_pos[i-1].y;
-		amino_pos[i+1].x = amino_pos[i].x+a_ab*cos(individual[i-1])-b_ab*sin(individual[i-1]);
-		amino_pos[i+1].y = amino_pos[i].y+b_ab*cos(individual[i-1])+a_ab*sin(individual[i-1]);
-	}
+  for (i = 1; i < (nvars - 1); i++){
+    a_ab = amino_pos[i].x-amino_pos[i-1].x;
+    b_ab = amino_pos[i].y-amino_pos[i-1].y;
+    amino_pos[i+1].x = amino_pos[i].x+a_ab*cos(individual[i-1])-b_ab*sin(individual[i-1]);
+    amino_pos[i+1].y = amino_pos[i].y+b_ab*cos(individual[i-1])+a_ab*sin(individual[i-1]);
+  }
 
-	v1 = 0;
-	v2 = 0;
-	for (i = 0; (i < (nvars-2)); i++) {
-      v1 += (1.0 - cos(individual[i]) ) / 4.0;
-		for (j = (i+2); (j < nvars); j++) {
-			if (AB_SQ[i] == 'A' && AB_SQ[j] == 'A') //AA bond
-				c_ab = 1;
-			else if (AB_SQ[i] == 'B' && AB_SQ[j] == 'B') //BB bond
-				c_ab = 0.5;
-			else
-				c_ab = -0.5; //AB or BA bond
+  v1 = 0;
+  v2 = 0;
+  for (i = 0; (i < (nvars-2)); i++) {
+    v1 += (1.0 - cos(individual[i]) ) / 4.0;
+    for (j = (i+2); (j < nvars); j++) {
+      if (AB_SQ[i] == 'A' && AB_SQ[j] == 'A') //AA bond
+        c_ab = 1;
+      else if (AB_SQ[i] == 'B' && AB_SQ[j] == 'B') //BB bond
+        c_ab = 0.5;
+      else
+        c_ab = -0.5; //AB or BA bond
 
-			d_ab = sqrt(((amino_pos[i].x-amino_pos[j].x)*(amino_pos[i].x-amino_pos[j].x))+((amino_pos[i].y-amino_pos[j].y)*(amino_pos[i].y-amino_pos[j].y))); //Distance for Lennard-Jones
-			v2 += 4.0 * ( 1 / pow(d_ab, 12) - c_ab / pow(d_ab, 6) );
-		}
-	}
-	return(v1 + v2);
+      d_ab = sqrt(((amino_pos[i].x-amino_pos[j].x)*(amino_pos[i].x-amino_pos[j].x))+((amino_pos[i].y-amino_pos[j].y)*(amino_pos[i].y-amino_pos[j].y))); //Distance for Lennard-Jones
+      v2 += 4.0 * ( 1 / pow(d_ab, 12) - c_ab / pow(d_ab, 6) );
+    }
+  }
+  return(v1 + v2);
 }
 
 float HookeJeeves::best_nearby(float * point, float prevbest, uint * eval){
