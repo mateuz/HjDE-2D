@@ -99,7 +99,15 @@ void jDE::update(){
 void jDE::run(float * og, float * ng){
   //DE<<<n_blocks, n_threads>>>(d_states, og, ng, T_F, T_CR, fseq);
   //printf("NB: %d, NT: %d\n", NP, n_threads_2);
-  mDE<<<NP, n_threads_2>>>(d_states2, og, ng, T_F, T_CR, fseq);
+
+  rand_DE<<<NP, n_threads_2>>>(d_states2, og, ng, T_F, T_CR, fseq);
+  checkCudaErrors(cudaGetLastError());
+}
+
+void jDE::run_b(float * og, float * ng, float * bg, uint b_id){
+  // printf("ID %d\n", b_id);
+
+  best_DE<<<NP, n_threads_2>>>(og, ng, bg, b_id);
   checkCudaErrors(cudaGetLastError());
 }
 
@@ -111,6 +119,65 @@ void jDE::index_gen(){
 void jDE::selection(float * og, float * ng, float * fog, float * fng){
   selectionK<<<n_blocks, n_threads>>>(og, ng, fog, fng, F, CR, T_F, T_CR);
   checkCudaErrors(cudaGetLastError());
+}
+
+void jDE::crowding_selection(float * og, float * ng, float * fog, float * fng, float * res){
+  float * iter;
+  int position;
+  thrust::device_ptr<float> d_fog = thrust::device_pointer_cast(fog);
+  thrust::device_ptr<float> d_fng = thrust::device_pointer_cast(fng);
+  // thrust::device_ptr<float> d_og = thrust::device_pointer_cast(og);
+  // thrust::device_ptr<float> d_ng = thrust::device_pointer_cast(ng);
+
+  // printf("NP: %d\n", NP);
+  for( uint p = 0; p < NP; p++ ){
+    crowding<<<n_blocks, n_threads>>>(ng, og, p, res);
+    checkCudaErrors(cudaGetLastError());
+    // thrust::device_vector<float> d_res( res, res+NP);
+    // thrust::host_vector<float> h_res = d_res;
+    // for( int i = 0 ; i < NP; i++ ){
+    //   printf("%.1f ", h_res[i]);
+    // }
+    // printf("\n");
+    iter = thrust::min_element(thrust::device, res, res + NP);
+    position = iter - res;
+    //
+    // printf("[%d] The minimum distance element is: %i %.3f\n", p+1, position, h_res[position]);
+    // printf("d_fng[%d] %.4f <= d_fog[%d] %.4f\n", p, (float)d_fng[p], position, (float)d_fog[position]);
+    if( (float)d_fng[p] <= (float)d_fog[position] ){
+      // printf("Antes: %.3f e \n", (float)d_fog[position]);
+      // for( int i = 0; i < n_dim; i++ ){
+      //   printf("%.1f ", (float)d_og[position * n_dim + i]);
+      // }
+      // printf("\n");
+
+      thrust::copy_n(thrust::device,
+        ng + (p * n_dim),       //source
+        n_dim,                  //num elements to copy
+        og + (position * n_dim) //destination
+      );
+
+      thrust::copy_n(thrust::device,
+        fng + p,       //source fitness
+        1,             //copy just one value
+        fog + position //destination fitness update
+      );
+
+      // printf("Agora: %.3f e \n", (float)d_fog[position]);
+      // for( int i = 0; i < n_dim; i++ ){
+      //   printf("%.1f ", (float)d_og[position * n_dim + i]);
+      // }
+      // printf("\n");
+      //
+      // printf("E deve ser: \n");
+      // for( int i = 0; i < n_dim; i++ ){
+      //   printf("%.1f ", (float)d_ng[p * n_dim + i]);
+      // }
+      // printf("\n");
+
+    }
+  }
+  // scanf("%d", &position);
 }
 
 /*
@@ -227,8 +294,7 @@ __global__ void DE(curandState * rng, float * og, float * ng, float * F, float *
   }
 }
 
-
-__global__ void mDE(curandState *rng, float * og, float * ng, float * F, float * CR, uint * fseq){
+__global__ void rand_DE(curandState *rng, float * og, float * ng, float * F, float * CR, uint * fseq){
   uint id_d, id_p, ps, n_dim;
 
   //id_g = threadIdx.x + blockDim.x * blockIdx.x;
@@ -268,8 +334,13 @@ __global__ void mDE(curandState *rng, float * og, float * ng, float * F, float *
     if( curand_uniform(&random) <= mCR || (id_p == rnbr) ){
       ng[p1 + id_p] = og[p2 + id_p] + mF * (og[p3 + id_p] - og[p4 + id_p]);
 
-      ng[p1 + id_p] = max(params.x_min, ng[p1 + id_p]);
-      ng[p1 + id_p] = min(params.x_max, ng[p1 + id_p]);
+      // ng[p1 + id_p] = max(params.x_min, ng[p1 + id_p]);
+      // ng[p1 + id_p] = min(params.x_max, ng[p1 + id_p]);
+      if( ng[p1 + id_p] <= params.x_min ){
+        ng[p1 + id_p] += 2.0 * params.x_max;
+      } else if( ng[p1 + id_p] > params.x_max ){
+        ng[p1 + id_p] += 2.0 * params.x_min;
+      }
     } else {
       ng[p1 + id_p] = og[p1 + id_p];
     }
@@ -277,6 +348,76 @@ __global__ void mDE(curandState *rng, float * og, float * ng, float * F, float *
     rng[id_d * id_p ] = random;
   }
 }
+
+__global__ void best_DE(float * og, float * ng, float * bnew, uint pbest){
+  uint id_d, id_p, n_dim;
+
+  //id_g = threadIdx.x + blockDim.x * blockIdx.x;
+
+  id_d  = blockIdx.x;
+	id_p  = threadIdx.x;
+
+  n_dim = params.n_dim;
+
+  if( id_p < n_dim ){
+    __shared__ uint p1;
+    __shared__ uint pb;
+
+    __syncthreads();
+
+    if( id_p == 0 ){
+      p1 = id_d * n_dim;
+      pb = pbest * n_dim;
+    }
+
+    __syncthreads();
+
+    bnew[p1 + id_p] = og[pb + id_p] + 0.5 * (ng[p1 + id_p] - og[p1 + id_p]);
+
+    //check bounds
+    if( bnew[p1 + id_p] <= params.x_min ){
+      bnew[p1 + id_p] += 2.0 * params.x_max;
+    } else if( bnew[p1 + id_p] > params.x_max ){
+      bnew[p1 + id_p] += 2.0 * params.x_min;
+    }
+    // bnew[p1 + id_p] = max(params.x_min, bnew[p1 + id_p]);
+    // bnew[p1 + id_p] = min(params.x_max, bnew[p1 + id_p]);
+  }
+}
+
+/*
+ * Performs the crowding operation
+ * One thread per individual
+ *
+ * The kernel calculate the projection of a vector (A)
+ * in a set of vectors (B)
+ *
+ * @params:
+ * float * A: fixed vector to compare
+ * float * B: array to compare
+ * uint pid: the fixed index to compare
+ * float * res: stores the distance;
+ */
+__global__ void crowding(float * A, float * B, uint p_id, float * res){
+  uint t_id = threadIdx.x + blockDim.x * blockIdx.x;
+
+  uint N  = params.n_dim;
+  uint PS = params.ps;
+
+  if( t_id < PS ){
+    float S = 0.0; //stores the sum
+    float D = 0.0; //stores the distance
+
+    for( uint i = 0; i < N; i++ ){
+      D = A[p_id * N + i] - B[t_id * N + i];
+      S += D * D;
+    }
+
+    res[t_id] = S;
+  }
+
+}
+
 /*
  * Generate 3 different indexs to DE/rand/1/bin.
  * @TODO:

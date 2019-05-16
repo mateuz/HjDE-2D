@@ -48,8 +48,10 @@ public:
 
   /* jDE functions */
   void run(float *, float *);
+  void run_b(float *, float *, float *, uint);
   void update();
   void selection(float *, float *, float *, float *);
+  void crowding_selection(float *, float *, float *, float *, float *);
   void index_gen();
   void reset();
 };
@@ -61,7 +63,11 @@ __global__ void selectionK(float *, float *, float *, float *, float *, float *,
 
 __global__ void DE(curandState *, float *, float *, float *, float *, uint *);
 
-__global__ void mDE(curandState *, float *, float *, float *, float *, uint *);
+__global__ void rand_DE(curandState *, float *, float *, float *, float *, uint *);
+
+__global__ void best_DE(float *, float *, float *, uint);
+
+__global__ void crowding(float *, float *, uint, float *);
 
 __global__ void iGen(curandState *, uint *, uint *);
 
