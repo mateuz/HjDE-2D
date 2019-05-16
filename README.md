@@ -1,6 +1,6 @@
-# A GPU-Based jDE Algorithm
+# A GPU-Based Memetic Algorithm for the 2D Protein Structure Prediction
 
-###### Population-based search algorithms, such as the Differential Evolution approach, evolve a pool of candidate solutions during the optimization process and are suitable for massively parallel architectures promoted by the use of GPUs. The repository contains a GPU-based implementation of a self-adaptive Differential Evolution employing the jDE mechanism. 
+###### Here goes the algorithm description. 
 
 ***
 ##### Requirements
@@ -23,72 +23,15 @@ $ make
 ```
 $ "runs, r"      - Number of Executions
 $ "pop_size, p"  - Population Size
-$ "dim, d"       - Number of Dimensions {2, 5, 10, 20, 30, 50, 100}
-$ "func_obj, o"  - Function to Optimize [1, 7]
+$ "dim, d"       - Number of Dimensions {13, 21, 34, 38, 55, 64, 98, 120}
+$ "func_obj, o"  - Function to Optimize {1001}
 $ "max_eval, e"  - Number of Function Evaluations
 $ "help, h"      - Show this help
 ```
 
-##### Functions Available
+##### Proteins Tested and Results
 
-<table style="">
-  <tr>
-    <th>Function</th>
-    <th>Name</th>
-    <th>Shifted</th>
-    <th>Rotated</th>
-    <th>Search Space</th>
-  </tr>
-  <tr>
-    <td>1</td>
-    <td>S. Sphere</td>
-    <td>Yes</td>
-    <td>No</td>
-    <td>[-100, +100]</td>
-  </tr>
-  <tr>
-    <td>2</td>
-    <td>S. Rosenbrock</td>
-    <td>Yes</td>
-    <td>No</td>
-    <td>[-100, +100]</td>
-  </tr>
-  <tr>
-    <td>3</td>
-    <td>S. Griewank</td>
-    <td>Yes</td>
-    <td>No</td>
-    <td>[-600, +600]</td>
-  </tr>
-  <tr>
-    <td>4</td>
-    <td>S. Rastrigin</td>
-    <td>Yes</td>
-    <td>No</td>
-    <td>[-5, +5]</td>
-  </tr>
-  <tr>
-    <td>5</td>
-    <td>S. R. Rosenbrock</td>
-    <td>Yes</td>
-    <td>Yes</td>
-    <td>[-100, +100]</td>
-  </tr>
-  <tr>
-    <td>6</td>
-    <td>S. R. Griewank</td>
-    <td>Yes</td>
-    <td>Yes</td>
-    <td>[-600, +600]</td>
-  </tr>
-  <tr>
-    <td>7</td>
-    <td>S. R. Rastrigin</td>
-    <td>Yes</td>
-    <td>Yes</td>
-    <td>[-5, +5]</td>
-  </tr>
-</table>
+- Empty list for a while
 
 ##### Execute
 
