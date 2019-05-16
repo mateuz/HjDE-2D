@@ -187,34 +187,34 @@ void jDE::crowding_selection(float * og, float * ng, float * fog, float * fng, f
  * on constants header
  */
 __global__ void updateK(curandState * g_state, float * d_F, float * d_CR, float * d_TF, float * d_TCR) {
-	int index = threadIdx.x + blockDim.x * blockIdx.x;
+  int index = threadIdx.x + blockDim.x * blockIdx.x;
 
   uint ps = params.ps;
 
   if( index < ps ){
-  	curandState localState;
-  	localState = g_state[index];
+    curandState localState;
+    localState = g_state[index];
 
-  	//(0, 1]
-  	float r1, r2, r3, r4;
-  	r1 = curand_uniform(&localState);
-  	r2 = curand_uniform(&localState);
-  	r3 = curand_uniform(&localState);
-  	r4 = curand_uniform(&localState);
+    //(0, 1]
+    float r1, r2, r3, r4;
+    r1 = curand_uniform(&localState);
+    r2 = curand_uniform(&localState);
+    r3 = curand_uniform(&localState);
+    r4 = curand_uniform(&localState);
 
-  	if (r2 < T){
-  		d_TF[index] = F_Lower + (r1 * F_Upper);
+    if (r2 < T){
+      d_TF[index] = F_Lower + (r1 * F_Upper);
     } else {
       d_TF[index] = d_F[index];
     }
 
-  	if (r4 < T){
-  		d_TCR[index] = r3;
+    if (r4 < T){
+      d_TCR[index] = r3;
     } else {
       d_TCR[index] = d_CR[index];
     }
 
-  	g_state[index] = localState;
+    g_state[index] = localState;
   }
 }
 
@@ -455,9 +455,9 @@ __global__ void iGen(curandState * g_state, uint * rseq, uint * fseq){
 
 /* Each thread gets same seed, a different sequence number, no offset */
 __global__ void setup_kernel(curandState * random, uint seed){
-	uint index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if (index < params.ps)
-		curand_init(seed, index, 0, &random[index]);
+  uint index = threadIdx.x + (blockIdx.x * blockDim.x);
+  if (index < params.ps)
+    curand_init(seed, index, 0, &random[index]);
 }
 
 /*
@@ -466,7 +466,7 @@ __global__ void setup_kernel(curandState * random, uint seed){
  *
  */
 __global__ void sk2(curandState * random, uint seed){
-	uint index = threadIdx.x + (blockIdx.x * blockDim.x);
-	if (index < params.ps * params.n_dim)
-		curand_init(seed, index, 0, &random[index]);
+  uint index = threadIdx.x + (blockIdx.x * blockDim.x);
+  if (index < params.ps * params.n_dim)
+    curand_init(seed, index, 0, &random[index]);
 }
