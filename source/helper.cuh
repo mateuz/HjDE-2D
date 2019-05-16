@@ -11,6 +11,9 @@
 #include <thrust/sequence.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+#include <thrust/random.h>
+#include <thrust/transform.h>
+#include <thrust/iterator/counting_iterator.h>
 #include <stdio.h>
 
 template<class T>
@@ -25,10 +28,27 @@ __device__ const T& max(const T& a, const T& b)
 	return (a < b) ? b : a;
 }
 
+struct prg
+{
+  float a, b;
+  uint seed;
+
+  __host__ __device__
+  prg(float _a=0.f, float _b=1.f, uint _s=1234):a(_a), b(_b), seed(_s){};
+
+  __host__ __device__ float operator()(const unsigned int n) const
+  {
+    thrust::default_random_engine rng(seed);
+    thrust::uniform_real_distribution<float> dist(a, b);
+    rng.discard(n);
+
+    return dist(rng);
+  }
+};
+
 #ifndef DEVICE_RESET
 #define DEVICE_RESET cudaDeviceReset();
 #endif
-
 
 static const char *_cudaGetErrorEnum(cudaError_t error) {
 	switch (error) {
