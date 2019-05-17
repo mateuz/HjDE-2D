@@ -14,8 +14,8 @@
 #include <cstring>
 
 typedef struct {
-	double x;
-	double y;
+	float x;
+	float y;
 } amino;
 
 class HookeJeeves
@@ -47,10 +47,10 @@ public:
   // of rho reduces the number of evaluations (and the
   // program running time), but increases the risk of
   // nonconvergence.
-  double rho;
+  float rho;
 
   // this is the criterion for halting the search for a minimum.
-  double epsilon;
+  float epsilon;
 
   // A second, rarely used, halting criterion. If the algorithm
   // uses >= itermax iterations, halt.
@@ -62,9 +62,9 @@ public:
 
   // Parameters received:
   //   - uint: number of Dimensions
-  //   - double: rho
-  //   - double: epsilon
-	HookeJeeves(uint, double, double);
+  //   - float: rho
+  //   - float: epsilon
+	HookeJeeves(uint, float, float);
 	~HookeJeeves();
 
   float best_nearby(float *, float , uint * );

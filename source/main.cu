@@ -85,7 +85,7 @@ int main(int argc, char * argv[]){
 
   float time  = 0.00;
   jDE * jde = new jDE(NP, n_dim, x_min, x_max);
-  HookeJeeves * hj  = new HookeJeeves(n_dim, 0.9, 1.0e-10);
+  HookeJeeves * hj  = new HookeJeeves(n_dim, 0.9, 1.0e-30);
 
   float hjres;
 
@@ -95,7 +95,7 @@ int main(int argc, char * argv[]){
   std::mt19937 rng(seed);
   std::uniform_int_distribution<int> random_i(0, NP-1);//[0, NP-1]
 
-  for( int i = 1; i <= n_runs; i++ ){
+  for( uint run = 1; run <= n_runs; run++ ){
     cudaEventRecord(start);
 
     // Randomly initiate the population
@@ -112,13 +112,17 @@ int main(int argc, char * argv[]){
 
     B->compute(p_og, p_fog);
     int g = 0;
-    for( uint evals = 0; evals < n_evals; evals += 2*NP ){
+    for( uint evals = 0; evals < n_evals; ){
       // printf("> %d\n", g);
       g++;
 
       jde->index_gen();
       jde->run(p_og, p_ng);
       B->compute(p_ng, p_fng);
+      evals += NP;
+
+      // jde->selection(p_og, p_ng, p_fog, p_fng);
+      // jde->update();
 
       // get the best index
       it   = thrust::min_element(thrust::device, d_fog.begin(), d_fog.end());
@@ -126,11 +130,30 @@ int main(int argc, char * argv[]){
 
       jde->run_b(p_og, p_ng, p_bg, b_id);
       B->compute(p_bg, p_fbg);
+      evals += NP;
 
+      //selection between trial and best variations
       jde->selection(p_ng, p_bg, p_fng, p_fbg);
 
-      // jde->selection(p_og, p_ng, p_fog, p_fng);
+      //crowding between old generation and new trial vectors
       jde->crowding_selection(p_og, p_ng, p_fog, p_fng, p_res);
+
+      // double * iter = thrust::min_element(thrust::device, p_fog, p_fog + NP);
+      // int position = iter - p_fog;
+
+      // printf("A: %d and %.4lf\n", b_id, static_cast<double>(*it));
+      // printf("B: %d and %.4lf\n", position, (double)d_fog[position] );
+
+      // for( int d = 0; d < n_dim * NP; d++ ){
+      //  printf("teste[%d] = %.3f;\n", d, (double)d_og[position + d]);
+      //  printf("teste[%d] = %.20f;\n", d, (double)d_og[d]);
+      // }
+      // int a;
+      // printf("go one more time?\n");
+      // scanf("%d", &a);
+      // if(a == 0){
+      //   exit(-1);
+      // }
 
       jde->update();
 
@@ -139,8 +162,10 @@ int main(int argc, char * argv[]){
         // thrust::host_vector<float> H(d_og.begin() + (n_dim * b_idx), d_og.begin() + (n_dim * b_idx) + n_dim);
         thrust::host_vector<float> H(n_dim);
         for( int d = 0; d < n_dim; d++ ){
-          H[d] = d_og[(b_idx * n_dim) + d];
+          H[d] = (float)d_og[(b_idx * n_dim) + d];
+          // printf("teste[%d] = %.15f;\n", d, (double)d_og[(b_idx * n_dim) + d]);
         }
+        // printf("Entring hooke jeeves with %.10lf\n", (float)d_fog[b_idx]);
         d_fog[b_idx] = hj->optimize(10000, H.data());
         for( int d = 0; d < n_dim; d++ ){
           d_og[(b_idx*n_dim) + d] = H[d];
@@ -166,7 +191,7 @@ int main(int argc, char * argv[]){
 
     // printf(" | R: ");
     for( int nd = 0; nd < n_dim; nd++ ){
-      H[nd] = d_og[(position * n_dim) + nd];
+      H[nd] = (float)d_og[(position * n_dim) + nd];
     }
     //   printf("teste[%d] = %.4f;\n", nd, H[nd]);
     // printf("\n");
@@ -183,15 +208,15 @@ int main(int argc, char * argv[]){
     printf("\n");
 
     // printf(" | Execution: %-2d Overall Best: %+.8f -> %+.8f GPU Time (s): %.8f and HJ Time (s): %.8f\n", i, static_cast<float>(*it), hjres, time/1000.0, tend-tini);
-    printf(" | Execution: %-2d Overall Best: %+.8f -> %+.8f GPU Time (s): %.8f\n", i, static_cast<float>(*it), hjres, time/1000.0);
+    printf(" | Execution: %-2d Overall Best: %+.8lf -> %+.8f GPU Time (s): %.8f\n", run, static_cast<float>(*it), hjres, time/1000.0);
     stats.push_back(std::make_pair(static_cast<float>(*it), time));
 
     jde->reset();
   }
 
   /* Statistics of the Runs */
-  double FO_mean  = 0.0f, FO_std  = 0.0f;
-  double T_mean   = 0.0f, T_std   = 0.0f;
+  float FO_mean = 0.0f, FO_std = 0.0f;
+  float T_mean  = 0.0f, T_std  = 0.0f;
   for( auto it = stats.begin(); it != stats.end(); it++){
     FO_mean += it->first;
     T_mean  += it->second;

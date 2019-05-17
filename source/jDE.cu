@@ -108,6 +108,7 @@ void jDE::run_b(float * og, float * ng, float * bg, uint b_id){
   // printf("ID %d\n", b_id);
 
   best_DE<<<NP, n_threads_2>>>(og, ng, bg, b_id);
+  // cudaDeviceSynchronize();
   checkCudaErrors(cudaGetLastError());
 }
 
@@ -371,6 +372,12 @@ __global__ void best_DE(float * og, float * ng, float * bnew, uint pbest){
     }
 
     __syncthreads();
+
+    // if(id_p == 0 && id_d == 0){
+    //   for(int i = 0; i < n_dim; i++){
+    //     printf("teste[%d] = %.3f;\n", i, og[pb + i]);
+    //   }
+    // }
 
     bnew[p1 + id_p] = og[pb + id_p] + 0.5 * (ng[p1 + id_p] - og[p1 + id_p]);
 

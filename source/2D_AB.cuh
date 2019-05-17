@@ -5,7 +5,7 @@
 #include "helper.cuh"
 
 typedef struct {
-  double x, y;
+  float x, y;
 } AB_2D;
 
 class F2DAB : public Benchmarks
@@ -21,7 +21,7 @@ public:
 
 };
 
-__device__ float _C( uint, uint );
+__device__ float _C( uint i, uint j );
 
 __global__ void computeK_2DAB_P(float * x, float * f);
 __global__ void computeK_2DAB_S(float * x, float * f);

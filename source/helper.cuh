@@ -30,16 +30,16 @@ __device__ const T& max(const T& a, const T& b)
 
 struct prg
 {
-  float a, b;
+  double a, b;
   uint seed;
 
   __host__ __device__
-  prg(float _a=0.f, float _b=1.f, uint _s=1234):a(_a), b(_b), seed(_s){};
+  prg(double _a=0.f, double _b=1.f, uint _s=1234):a(_a), b(_b), seed(_s){};
 
-  __host__ __device__ float operator()(const unsigned int n) const
+  __host__ __device__ double operator()(const unsigned int n) const
   {
     thrust::default_random_engine rng(seed);
-    thrust::uniform_real_distribution<float> dist(a, b);
+    thrust::uniform_real_distribution<double> dist(a, b);
     rng.discard(n);
 
     return dist(rng);
