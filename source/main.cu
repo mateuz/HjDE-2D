@@ -128,7 +128,7 @@ int main(int argc, char * argv[]){
       it   = thrust::min_element(thrust::device, d_fog.begin(), d_fog.end());
       b_id = thrust::distance(d_fog.begin(), it);
 
-      jde->run_b(p_og, p_ng, p_bg, b_id);
+      jde->run_b(p_og, p_ng, p_bg, p_fog, p_fng, b_id);
       B->compute(p_bg, p_fbg);
       evals += NP;
 
@@ -195,10 +195,10 @@ int main(int argc, char * argv[]){
     }
     //   printf("teste[%d] = %.4f;\n", nd, H[nd]);
     // printf("\n");
-    // double tini, tend;
-    // tini = stime();
-    // hjres = hj->optimize(1000000, H.data());
-    // tend = stime();
+    double tini, tend;
+    tini = stime();
+    hjres = hj->optimize(1000000, H.data());
+    tend = stime();
 
 
     printf(" | Conformation: \n | ");

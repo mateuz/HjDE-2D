@@ -104,10 +104,10 @@ void jDE::run(float * og, float * ng){
   checkCudaErrors(cudaGetLastError());
 }
 
-void jDE::run_b(float * og, float * ng, float * bg, uint b_id){
+void jDE::run_b(float * og, float * ng, float * bg, float * fog, float * fng, uint b_id){
   // printf("ID %d\n", b_id);
 
-  best_DE<<<NP, n_threads_2>>>(og, ng, bg, b_id);
+  best_DE<<<NP, n_threads_2>>>(og, ng, bg, fog, fng, b_id);
   // cudaDeviceSynchronize();
   checkCudaErrors(cudaGetLastError());
 }
@@ -118,15 +118,25 @@ void jDE::index_gen(){
 }
 
 void jDE::selection(float * og, float * ng, float * fog, float * fng){
-  selectionK<<<n_blocks, n_threads>>>(og, ng, fog, fng, F, CR, T_F, T_CR);
+  selectionK<<<n_blocks, n_threads>>>(og, ng, fog, fng);
   checkCudaErrors(cudaGetLastError());
 }
 
-void jDE::crowding_selection(float * og, float * ng, float * fog, float * fng, float * res){
+void jDE::crowding_selection(
+  float * og, float * ng,
+  float * fog, float * fng,
+  float * res
+){
   float * iter;
   int position;
   thrust::device_ptr<float> d_fog = thrust::device_pointer_cast(fog);
   thrust::device_ptr<float> d_fng = thrust::device_pointer_cast(fng);
+
+  thrust::device_ptr<float> d_f = thrust::device_pointer_cast(F);
+  thrust::device_ptr<float> d_cr = thrust::device_pointer_cast(CR);
+
+  thrust::device_ptr<float> d_tf = thrust::device_pointer_cast(T_F);
+  thrust::device_ptr<float> d_tcr = thrust::device_pointer_cast(T_CR);
   // thrust::device_ptr<float> d_og = thrust::device_pointer_cast(og);
   // thrust::device_ptr<float> d_ng = thrust::device_pointer_cast(ng);
 
@@ -163,6 +173,10 @@ void jDE::crowding_selection(float * og, float * ng, float * fog, float * fng, f
         1,             //copy just one value
         fog + position //destination fitness update
       );
+
+      // update F and CR;
+      d_f[position]  = d_tf[p];
+      d_cr[position] = d_tcr[p];
 
       // printf("Agora: %.3f e \n", (float)d_fog[position]);
       // for( int i = 0; i < n_dim; i++ ){
@@ -226,9 +240,8 @@ __global__ void updateK(curandState * g_state, float * d_F, float * d_CR, float 
  * ng -> New genes, the new generation offsprings
  * fog -> fitness of the old offspring
  * fng -> fitness of the new offspring
- * ndim -> number of dimensions used to copy the genes
  */
-__global__ void selectionK(float * og, float * ng, float * fog, float * fng, float * d_F, float * d_CR, float * d_TF, float * d_TCR){
+__global__ void selectionK(float * og, float * ng, float * fog, float * fng){
   uint index = threadIdx.x + blockDim.x * blockIdx.x;
   uint ps = params.ps;
 
@@ -237,8 +250,6 @@ __global__ void selectionK(float * og, float * ng, float * fog, float * fng, flo
     if( fng[index] <= fog[index] ){
       memcpy(og + (ndim * index), ng + (ndim * index), ndim * sizeof(float));
       fog[index]  = fng[index];
-      d_F[index]  = d_TF[index];
-      d_CR[index] = d_TCR[index];
    }
   }
 }
@@ -350,7 +361,7 @@ __global__ void rand_DE(curandState *rng, float * og, float * ng, float * F, flo
   }
 }
 
-__global__ void best_DE(float * og, float * ng, float * bnew, uint pbest){
+__global__ void best_DE(float * og, float * ng, float * bnew, float * fog, float * fng, uint pbest){
   uint id_d, id_p, n_dim;
 
   //id_g = threadIdx.x + blockDim.x * blockIdx.x;
@@ -364,11 +375,17 @@ __global__ void best_DE(float * og, float * ng, float * bnew, uint pbest){
     __shared__ uint p1;
     __shared__ uint pb;
 
+    __shared__ float _FA;
+    __shared__ float _FB;
+
     __syncthreads();
 
     if( id_p == 0 ){
       p1 = id_d * n_dim;
       pb = pbest * n_dim;
+
+      _FA = fog[id_d];
+      _FB = fng[id_d];
     }
 
     __syncthreads();
@@ -379,16 +396,18 @@ __global__ void best_DE(float * og, float * ng, float * bnew, uint pbest){
     //   }
     // }
 
-    bnew[p1 + id_p] = og[pb + id_p] + 0.5 * (ng[p1 + id_p] - og[p1 + id_p]);
+    if( _FB <= _FA ){
+      bnew[p1 + id_p] = og[pb + id_p] + 0.5 * (ng[p1 + id_p] - og[p1 + id_p]);
 
-    //check bounds
-    if( bnew[p1 + id_p] <= params.x_min ){
-      bnew[p1 + id_p] += 2.0 * params.x_max;
-    } else if( bnew[p1 + id_p] > params.x_max ){
-      bnew[p1 + id_p] += 2.0 * params.x_min;
+      //check bounds
+      if( bnew[p1 + id_p] <= params.x_min ){
+        bnew[p1 + id_p] += 2.0 * params.x_max;
+      } else if( bnew[p1 + id_p] > params.x_max ){
+        bnew[p1 + id_p] += 2.0 * params.x_min;
+      }
+    } else {
+      bnew[p1 + id_p] = ng[p1 + id_p];
     }
-    // bnew[p1 + id_p] = max(params.x_min, bnew[p1 + id_p]);
-    // bnew[p1 + id_p] = min(params.x_max, bnew[p1 + id_p]);
   }
 }
 

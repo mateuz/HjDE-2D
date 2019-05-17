@@ -48,7 +48,7 @@ public:
 
   /* jDE functions */
   void run(float *, float *);
-  void run_b(float *, float *, float *, uint);
+  void run_b(float *, float *, float *, float *, float *, uint);
   void update();
   void selection(float *, float *, float *, float *);
   void crowding_selection(float *, float *, float *, float *, float *);
@@ -59,13 +59,13 @@ public:
 /* CUDA Kernels */
 __global__ void updateK(curandState *, float *, float *, float *, float *);
 
-__global__ void selectionK(float *, float *, float *, float *, float *, float *, float *, float *);
+__global__ void selectionK(float *, float *, float *, float *);
 
 __global__ void DE(curandState *, float *, float *, float *, float *, uint *);
 
 __global__ void rand_DE(curandState *, float *, float *, float *, float *, uint *);
 
-__global__ void best_DE(float *, float *, float *, uint);
+__global__ void best_DE(float *, float *, float *, float *, float *, uint);
 
 __global__ void crowding(float *, float *, uint, float *);
 
