@@ -14,9 +14,11 @@
 #include <cstring>
 
 typedef struct {
-	float x;
-	float y;
+	double x;
+	double y;
 } amino;
+
+#define PI 3.1415926535897932384626433832795029
 
 class HookeJeeves
 {
@@ -26,18 +28,18 @@ public:
   uint nvars;
 
   // this is the user-supplied guess at the minimum
-  float * startpt;
+  double * startpt;
 
   // this is the localtion of the local minimum, calculated by the program
-  float * endpt;
+  double * endpt;
 
   // this is to control the perturbation in each dimension
-  float * delta;
+  double * delta;
 
   // aux vectors
-  float * newx;
-  float * xbef;
-  float * z;
+  double * newx;
+  double * xbef;
+  double * z;
 
   // this is a user-supplied convergence parameter,
   // which should be set to a value between 0.0 and 1.0.
@@ -47,10 +49,10 @@ public:
   // of rho reduces the number of evaluations (and the
   // program running time), but increases the risk of
   // nonconvergence.
-  float rho;
+  double rho;
 
   // this is the criterion for halting the search for a minimum.
-  float epsilon;
+  double epsilon;
 
   // A second, rarely used, halting criterion. If the algorithm
   // uses >= itermax iterations, halt.
@@ -62,14 +64,14 @@ public:
 
   // Parameters received:
   //   - uint: number of Dimensions
-  //   - float: rho
-  //   - float: epsilon
-	HookeJeeves(uint, float, float);
+  //   - double: rho
+  //   - double: epsilon
+	HookeJeeves(uint, double, double);
 	~HookeJeeves();
 
-  float best_nearby(float *, float , uint * );
-  float optimize(const uint, float *);
-  float evaluate(float *);
+  double best_nearby(double *, double , uint * );
+  double optimize(const uint, double *);
+  double evaluate(const double *);
 };
 
 #endif

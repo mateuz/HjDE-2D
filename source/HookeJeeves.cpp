@@ -1,14 +1,10 @@
 #include "HookeJeeves.hpp"
 
-#define PI 3.14159265
-
 // Parameters received:
 //   - uint: number of Dimensions
-//   - float: rho
-//   - float: epsilon
-//   - Benchmarks: function to be optimized
-
-HookeJeeves::HookeJeeves(uint _nd, float _rho, float _e){
+//   - double: rho
+//   - double: epsilon
+HookeJeeves::HookeJeeves(uint _nd, double _rho, double _e){
   nvars   = _nd;
   rho     = _rho;
   epsilon = _e;
@@ -17,15 +13,14 @@ HookeJeeves::HookeJeeves(uint _nd, float _rho, float _e){
   // printf(" | Rho:                         %.3lf\n", rho);
   // printf(" | Epsilon                      %.3lf\n", epsilon);
 
-  startpt = new float[nvars];
-  delta   = new float[nvars];
-
-  newx    = new float[nvars];
-  xbef    = new float[nvars];
-  z       = new float[nvars];
+  startpt = new double[nvars];
+  delta   = new double[nvars];
+  newx    = new double[nvars];
+  xbef    = new double[nvars];
+  z       = new double[nvars];
 
   amino_pos = new amino[nvars];
-  //(amino *) malloc (nvars * sizeof (amino));
+  memset(delta, 0, sizeof(double) * nvars);
 
   if( nvars == 13 ){
     AB_SQ = "ABBABBABABBAB";
@@ -47,8 +42,6 @@ HookeJeeves::HookeJeeves(uint _nd, float _rho, float _e){
     std::cout << "Error, AB string string sequence only defined to 13, 21, 34, 38, 55, 64, 98, and 120.\n";
     exit(-1);
   }
-
-  memset(delta, 0, sizeof(float) * nvars);
 }
 
 HookeJeeves::~HookeJeeves(){
@@ -59,47 +52,53 @@ HookeJeeves::~HookeJeeves(){
   delete [] xbef;
 }
 
-float HookeJeeves::evaluate(float * individual){
-  float a_ab,b_ab,c_ab,d_ab,v1,v2;
+double HookeJeeves::evaluate(const double * gen){
+  int i, j;
+  double d_x, d_y, v1, v2, C, D;
 
-  int i = 0, j = 0;
+  amino_pos[0].x = 0.0;
+  amino_pos[0].y = 0.0;
+  amino_pos[1].x = 1.0;
+  amino_pos[1].y = 0.0;
 
-  amino_pos[0].x = 0;
-  amino_pos[0].y = 0;
-  amino_pos[1].x = 1;
-  amino_pos[1].y = 0;
+  for( i = 1; i < (nvars - 1); i++ ){
+    d_x = amino_pos[i].x - amino_pos[i-1].x;
+    d_y = amino_pos[i].y - amino_pos[i-1].y;
 
-  for (i = 1; i < (nvars - 1); i++){
-    a_ab = amino_pos[i].x-amino_pos[i-1].x;
-    b_ab = amino_pos[i].y-amino_pos[i-1].y;
-    amino_pos[i+1].x = amino_pos[i].x+a_ab*cosf(individual[i-1])-b_ab*sinf(individual[i-1]);
-    amino_pos[i+1].y = amino_pos[i].y+b_ab*cosf(individual[i-1])+a_ab*sinf(individual[i-1]);
+    amino_pos[i+1].x = amino_pos[i].x + d_x * cos( gen[i - 1]) - d_y * sin( gen[i - 1] );
+    amino_pos[i+1].y = amino_pos[i].y + d_y * cos( gen[i - 1]) + d_x * sin( gen[i - 1] );
   }
 
-  v1 = 0.0;
-  v2 = 0.0;
-  for (i = 0; (i < (nvars-2)); i++) {
-    v1 += (1.0 - cosf(individual[i]) ) / 4.0;
-    for (j = (i+2); (j < nvars); j++) {
-      if (AB_SQ[i] == 'A' && AB_SQ[j] == 'A') //AA bond
-        c_ab = 1.0;
-      else if (AB_SQ[i] == 'B' && AB_SQ[j] == 'B') //BB bond
-        c_ab = 0.5;
+  v1 = v2 = 0.0;
+
+  for( i = 0; i < (nvars - 2); i++ ){
+    v1 += (1.0 - cos(gen[i])) / 4.0;
+
+    for( j = (i+2); j < nvars; j++ ){
+
+      if( AB_SQ[i] == 'A' && AB_SQ[j] == 'A' )
+        C = 1;
+      else if( AB_SQ[i] == 'B' && AB_SQ[j] == 'B' )
+        C = 0.50;
       else
-        c_ab = -0.5; //AB or BA bond
+        C = -0.50;
 
-      d_ab = sqrtf(((amino_pos[i].x-amino_pos[j].x)*(amino_pos[i].x-amino_pos[j].x))+((amino_pos[i].y-amino_pos[j].y)*(amino_pos[i].y-amino_pos[j].y))); //Distance for Lennard-Jones
-      v2 += 4.0 * ( 1.0 / powf(d_ab, 12.0) - c_ab / powf(d_ab, 6.0) );
+      d_x = amino_pos[i].x - amino_pos[j].x;
+      d_y = amino_pos[i].y - amino_pos[j].y;
+
+      D = sqrt( (d_x * d_x) + (d_y * d_y) );
+      v2 += 4.0 * ( 1.0/pow(D, 12.0) - C/pow(D, 6.0) );
     }
+
   }
-  return(v1 + v2);
+  return v1 + v2;
 }
 
-float HookeJeeves::best_nearby(float * point, float prevbest, uint * eval){
-  float minf, ftmp;
+double HookeJeeves::best_nearby(double * point, double prevbest, uint * eval){
+  double minf, ftmp;
 
   // save point on z
-  memcpy(z, point, sizeof(float) * nvars);
+  memcpy(z, point, sizeof(double) * nvars);
 
   minf = prevbest;
 
@@ -109,7 +108,7 @@ float HookeJeeves::best_nearby(float * point, float prevbest, uint * eval){
     // check bounds
     if( z[i] <= -PI ){
       z[i] += 2.0 * PI;
-    } else if(z[i] > +PI ){
+    } else if(z[i] > PI ){
       z[i] += 2.0 * -PI;
     }
 
@@ -125,7 +124,7 @@ float HookeJeeves::best_nearby(float * point, float prevbest, uint * eval){
       // check bounds
       if( z[i] <= -PI ){
         z[i] += 2.0 * PI;
-      } else if(z[i] > +PI){
+      } else if(z[i] > PI ){
         z[i] += 2.0 * -PI;
       }
 
@@ -138,16 +137,16 @@ float HookeJeeves::best_nearby(float * point, float prevbest, uint * eval){
         z[i] = point[i];
     }
   }
-  memcpy(point, z, sizeof(float) * nvars);
+  memcpy(point, z, sizeof(double) * nvars);
 
   return minf;
 }
 
-float HookeJeeves::optimize(const uint n_evals, float * _startpt){
+double HookeJeeves::optimize(const uint n_evals, double * _startpt){
   bool keep_on;
 
-  memcpy(newx, _startpt, sizeof(float) * nvars);
-  memcpy(xbef, _startpt, sizeof(float) * nvars);
+  memcpy(newx, _startpt, sizeof(double) * nvars);
+  memcpy(xbef, _startpt, sizeof(double) * nvars);
 
   uint it;
   for( it = 0; it < nvars; it++ ){
@@ -156,30 +155,24 @@ float HookeJeeves::optimize(const uint n_evals, float * _startpt){
       delta[it] = rho;
   }
 
-  float fbef;
-  float fnew;
-  float tmp;
+  double fbef;
+  double fnew;
+  double tmp;
 
-  //fbef = B->compute(newx, 0);
   fbef = evaluate(newx);
-  // printf("HJ starts the process with %.10f\n", fbef);
 
   fnew = fbef;
 
-  float step_length = rho;
+  double step_length = rho;
 
   it = 0;
   while( it < n_evals && step_length > epsilon ){
-    // it++;
-    // printf("\nAfter %5d fun evals, f(x) = %.4lf\n", it, fbef);
-
-    memcpy(newx, xbef, sizeof(float) * nvars);
+    memcpy(newx, xbef, sizeof(double) * nvars);
 
     fnew = best_nearby(newx, fbef, &it);
 
     // if we made some improvements, pursue that direction
     keep_on = true;
-    // printf("[1] %.10lf\n", fnew);
     while( (fnew < fbef) && (keep_on == true) ){
       for( uint i = 0; i < nvars; i++ ){
 
@@ -197,7 +190,7 @@ float HookeJeeves::optimize(const uint n_evals, float * _startpt){
         // check bounds
         if( newx[i] <= -PI ){
           newx[i] += 2.0 * PI;
-        } else if(newx[i] > +PI ){
+        } else if(newx[i] > PI ){
           newx[i] += 2.0 * -PI;
         }
       }
@@ -219,7 +212,6 @@ float HookeJeeves::optimize(const uint n_evals, float * _startpt){
           keep_on = false;
       }
     }
-    // printf("[2] %.10lf\n", fnew);
     if( (step_length >= epsilon) and (fnew >= fbef) ){
       step_length *= rho;
       for( uint i = 0; i < nvars; i++ )
@@ -231,6 +223,5 @@ float HookeJeeves::optimize(const uint n_evals, float * _startpt){
   for( uint i = 0; i < nvars; i++ )
     _startpt[i] = xbef[i];
 
-  // printf("exits with %.10f\n", fbef);
   return fbef;
 }

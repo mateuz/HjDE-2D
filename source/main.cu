@@ -87,9 +87,9 @@ int main(int argc, char * argv[]){
   jDE * jde = new jDE(NP, n_dim, x_min, x_max);
   HookeJeeves * hj  = new HookeJeeves(n_dim, 0.9, 1.0e-30);
 
-  float hjres;
+  double hjres;
 
-  std::vector< std::pair<float, float> > stats;
+  std::vector< std::pair<double, float> > stats;
 
   auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
   std::mt19937 rng(seed);
@@ -160,15 +160,15 @@ int main(int argc, char * argv[]){
       if( g%1000 == 0 && g != 0 ){
         int b_idx = random_i(rng);
         // thrust::host_vector<float> H(d_og.begin() + (n_dim * b_idx), d_og.begin() + (n_dim * b_idx) + n_dim);
-        thrust::host_vector<float> H(n_dim);
+        thrust::host_vector<double> H(n_dim);
         for( int d = 0; d < n_dim; d++ ){
-          H[d] = (float)d_og[(b_idx * n_dim) + d];
+          H[d] = static_cast<double>(d_og[(b_idx * n_dim) + d]);
           // printf("teste[%d] = %.15f;\n", d, (double)d_og[(b_idx * n_dim) + d]);
         }
         // printf("Entring hooke jeeves with %.10lf\n", (float)d_fog[b_idx]);
-        d_fog[b_idx] = hj->optimize(10000, H.data());
+        d_fog[b_idx] = static_cast<float>(hj->optimize(10000, H.data()));
         for( int d = 0; d < n_dim; d++ ){
-          d_og[(b_idx*n_dim) + d] = H[d];
+          d_og[(b_idx*n_dim) + d] = static_cast<float>(H[d]);
         }
       }
     }
@@ -187,28 +187,31 @@ int main(int argc, char * argv[]){
     // printf("B: %d and %.3f\n", position, (float)d_fog[position] );
 
     // thrust::host_vector<float> H(d_og.begin() + (n_dim * d), d_og.begin() + (n_dim * d) + n_dim);
-    thrust::host_vector<float> H(n_dim);
+    thrust::host_vector<double> H(n_dim);
 
-    // printf(" | R: ");
+    //printf(" | R: ");
     for( int nd = 0; nd < n_dim; nd++ ){
-      H[nd] = (float)d_og[(position * n_dim) + nd];
+      //printf("teste[%d] = %.20f;\n", nd, a);
+      //printf("teste[%d] = %.30lf;\n", nd, static_cast<double>(a));
+      H[nd] = static_cast<double>(d_og[(position * n_dim) + nd]);
+
     }
-    //   printf("teste[%d] = %.4f;\n", nd, H[nd]);
+
     // printf("\n");
     double tini, tend;
     tini = stime();
     hjres = hj->optimize(1000000, H.data());
     tend = stime();
 
-
     printf(" | Conformation: \n | ");
     for( int nd = 0; nd < n_dim; nd++ ){
-      printf("%.4f ", H[nd]); // printf("teste[%d] = %.4f;\n", nd, H[nd]);
+     printf("%.30lf ", H[nd]);
+     // printf("teste[%d] = %.30lf;\n", nd, H[nd]);
     }
     printf("\n");
 
-    // printf(" | Execution: %-2d Overall Best: %+.8f -> %+.8f GPU Time (s): %.8f and HJ Time (s): %.8f\n", i, static_cast<float>(*it), hjres, time/1000.0, tend-tini);
-    printf(" | Execution: %-2d Overall Best: %+.8lf -> %+.8f GPU Time (s): %.8f\n", run, static_cast<float>(*it), hjres, time/1000.0);
+    printf(" | Execution: %-2d Overall Best: %+.4f -> %+.4lf GPU Time (s): %.8f and HJ Time (s): %.8f\n", run, static_cast<float>(*it), hjres, time/1000.0, tend-tini);
+
     stats.push_back(std::make_pair(static_cast<float>(*it), time));
 
     jde->reset();
