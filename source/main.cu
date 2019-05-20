@@ -212,7 +212,7 @@ int main(int argc, char * argv[]){
 
     printf(" | Execution: %-2d Overall Best: %+.4f -> %+.4lf GPU Time (s): %.8f and HJ Time (s): %.8f\n", run, static_cast<float>(*it), hjres, time/1000.0, tend-tini);
 
-    stats.push_back(std::make_pair(static_cast<float>(*it), time));
+    stats.push_back(std::make_pair(hjres, time));
 
     jde->reset();
   }
