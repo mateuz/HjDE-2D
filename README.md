@@ -1,4 +1,4 @@
-# A GPU-Based Memetic Algorithm for the 2D Protein Structure Prediction
+# A GPU-Based Hybrid jDE Algorithm Applied to the 2D-AB Protein Structure Prediction
 
 ###### Here goes the algorithm description. 
 
@@ -7,7 +7,7 @@
 
 - ##### [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit) (tested with 9.2)
 
-- ##### GPU Compute Capability (tested with versions 5.2 and 6.1)
+- ##### GPU Compute Capability (tested with versions 5.2, 6.1, and 7.0)
 
 - ##### [Boost C++ Libraries - Program Options](https://www.boost.org/) (tested with 1.58.0)
 
