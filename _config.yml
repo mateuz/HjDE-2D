@@ -1,4 +1,4 @@
 theme: jekyll-theme-cayman
-title: [cujDE]
-description: [A GPU-Based implementation of a self-adaptive Differential Evolution employing the jDE mechanism]
+title: [cuHjDE]
+description: [A GPU-Based Hybrid jDE Algorithm for the 2D-AB PSP]
 show_downloads: ["true"]

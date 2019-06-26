@@ -1,13 +1,14 @@
-# A GPU-Based Memetic Algorithm for the 2D Protein Structure Prediction
+# A GPU-Based Hybrid jDE Algorithm Applied to the 2D-AB Protein Structure Prediction
 
-###### Here goes the algorithm description. 
+###### Protein Structure Prediction (PSP) problem is an open problem in bioinformatics and, as the problem scales, complexity and processing time increases. In this way, robust methods and massively parallel architectures are required. This repository provide a GPU-based hybrid algorithm, named cuHjDE, to handle the 2D-AB off-lattice PSP problem. The cuHjDE is composed of the jDE algorithm and the Hooke-Jeeves local search algorithm. An important feature present in the cuHjDE algorithm is the use of a crowding mechanism to avoid premature convergence promoting diversification in the search space. The proposed algorithm is compared with four state-of-the-art algorithms in both artificial and real proteins. Also, the impact of using GPU is analyzed. Experimental results point out that the proposed approach is competitive in artificial sequences and achieved new best results for all real sequence proteins.
+
 
 ***
 ##### Requirements
 
 - ##### [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit) (tested with 9.2)
 
-- ##### GPU Compute Capability (tested with versions 5.2 and 6.1)
+- ##### GPU Compute Capability (tested with versions 5.2, 6.1, and 7.0)
 
 - ##### [Boost C++ Libraries - Program Options](https://www.boost.org/) (tested with 1.58.0)
 
