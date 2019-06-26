@@ -6,19 +6,20 @@
 #include "Benchmarks.cuh"
 #include "jDE.cuh"
 #include "2D_AB.cuh"
+#include "3D_AB.cuh"
 #include "HookeJeeves.hpp"
 
 int main(int argc, char * argv[]){
   srand(time(NULL));
-  uint n_runs, NP, n_evals, n_dim, f_id;
+  uint n_runs, NP, n_evals, PL, f_id;
 
   try {
     po::options_description config("Opções");
     config.add_options()
-      ("runs,r"    , po::value<uint>(&n_runs)->default_value(1)    , "Number of Executions"          )
-      ("pop_size,p", po::value<uint>(&NP)->default_value(20)       , "Population Size"               )
-      ("dim,d"     , po::value<uint>(&n_dim)->default_value(10)    , "Number of Dimensions"          )
-      ("func_obj,o", po::value<uint>(&f_id)->default_value(1001)   , "Function to Optimize"          )
+      ("runs,r"    , po::value<uint>(&n_runs)->default_value(1)    , "Number of Executions" )
+      ("pop_size,p", po::value<uint>(&NP)->default_value(20)       , "Population Size"      )
+      ("protein_lenght,d", po::value<uint>(&PL)->default_value(13) , "Protein Length"       )
+      ("func_obj,o", po::value<uint>(&f_id)->default_value(1001)   , "Function to Optimize \n - 1001 - 2D-AB\n - 1002 - 3D-AB")
       ("max_eval,e", po::value<uint>(&n_evals)->default_value(10e5), "Number of Function Evaluations")
       ("help,h", "Mostrar texto de Ajuda");
 
@@ -36,10 +37,16 @@ int main(int argc, char * argv[]){
     return 1;
   }
 
+  uint n_dim; //size of the solution vector
+  if( f_id == 1001 )
+    n_dim = PL;
+  else if( f_id == 1002 )
+    n_dim = (2 * PL) - 5;
+
   printf(" +==============================================================+ \n");
   printf(" |                      EXECUTION PARAMETERS                    | \n");
   printf(" +==============================================================+ \n");
-  show_params(n_runs, NP, n_evals, n_dim, toString(f_id));
+  show_params(n_runs, NP, n_evals, n_dim, PL, toString(f_id));
   printf(" +==============================================================+ \n");
 
   cudaEvent_t start, stop;
@@ -73,7 +80,10 @@ int main(int argc, char * argv[]){
   int b_id;
 
   Benchmarks * B = NULL;
-  B = new F2DAB(n_dim, NP);
+  if( f_id == 1001 )
+    B = new F2DAB(n_dim, NP);
+  else if( f_id == 1002 )
+    B = new F3DAB(n_dim, NP, PL);
 
   if( B == NULL ){
     printf("Unknown function! Exiting...\n");
@@ -85,9 +95,8 @@ int main(int argc, char * argv[]){
 
   float time  = 0.00;
   jDE * jde = new jDE(NP, n_dim, x_min, x_max);
-  HookeJeeves * hj  = new HookeJeeves(n_dim, 0.9, 1.0e-30);
-
-  double hjres;
+  // HookeJeeves * hj  = new HookeJeeves(n_dim, 0.9, 1.0e-30);
+  double hjres = 0;
 
   std::vector< std::pair<double, float> > stats;
 
@@ -96,8 +105,6 @@ int main(int argc, char * argv[]){
   std::uniform_int_distribution<int> random_i(0, NP-1);//[0, NP-1]
 
   for( uint run = 1; run <= n_runs; run++ ){
-    cudaEventRecord(start);
-
     // Randomly initiate the population
 
     // For practical use
@@ -110,8 +117,11 @@ int main(int argc, char * argv[]){
 
     /* Starts a Run */
 
+    //warm-up
     B->compute(p_og, p_fog);
     int g = 0;
+
+    cudaEventRecord(start);
     for( uint evals = 0; evals < n_evals; ){
       // printf("> %d\n", g);
       g++;
@@ -157,20 +167,20 @@ int main(int argc, char * argv[]){
 
       jde->update();
 
-      if( g%1000 == 0 && g != 0 ){
-        int b_idx = random_i(rng);
-        // thrust::host_vector<float> H(d_og.begin() + (n_dim * b_idx), d_og.begin() + (n_dim * b_idx) + n_dim);
-        thrust::host_vector<double> H(n_dim);
-        for( int d = 0; d < n_dim; d++ ){
-          H[d] = static_cast<double>(d_og[(b_idx * n_dim) + d]);
-          // printf("teste[%d] = %.15f;\n", d, (double)d_og[(b_idx * n_dim) + d]);
-        }
-        // printf("Entring hooke jeeves with %.10lf\n", (float)d_fog[b_idx]);
-        d_fog[b_idx] = static_cast<float>(hj->optimize(10000, H.data()));
-        for( int d = 0; d < n_dim; d++ ){
-          d_og[(b_idx*n_dim) + d] = static_cast<float>(H[d]);
-        }
-      }
+      // if( g%1000 == 0 && g != 0 ){
+      //   int b_idx = random_i(rng);
+      //   // thrust::host_vector<float> H(d_og.begin() + (n_dim * b_idx), d_og.begin() + (n_dim * b_idx) + n_dim);
+      //   thrust::host_vector<double> H(n_dim);
+      //   for( int d = 0; d < n_dim; d++ ){
+      //     H[d] = static_cast<double>(d_og[(b_idx * n_dim) + d]);
+      //     // printf("teste[%d] = %.15f;\n", d, (double)d_og[(b_idx * n_dim) + d]);
+      //   }
+      //   // printf("Entring hooke jeeves with %.10lf\n", (float)d_fog[b_idx]);
+      //   d_fog[b_idx] = static_cast<float>(hj->optimize(10000, H.data()));
+      //   for( int d = 0; d < n_dim; d++ ){
+      //     d_og[(b_idx*n_dim) + d] = static_cast<float>(H[d]);
+      //   }
+      // }
     }
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
@@ -180,39 +190,41 @@ int main(int argc, char * argv[]){
     it = thrust::min_element(thrust::device, d_fog.begin(), d_fog.end());
     int d = thrust::distance(d_fog.begin(), it);
 
-    float * iter = thrust::min_element(thrust::device, p_fog, p_fog + NP);
-    int position = iter - p_fog;
+    // float * iter = thrust::min_element(thrust::device, p_fog, p_fog + NP);
+    // int position = iter - p_fog;
 
     // printf("A: %d and %.3f\n", d, static_cast<float>(*it));
     // printf("B: %d and %.3f\n", position, (float)d_fog[position] );
 
     // thrust::host_vector<float> H(d_og.begin() + (n_dim * d), d_og.begin() + (n_dim * d) + n_dim);
-    thrust::host_vector<double> H(n_dim);
+    // thrust::host_vector<double> H(n_dim);
+    //
+    // //printf(" | R: ");
+    // for( int nd = 0; nd < n_dim; nd++ ){
+    //   //printf("teste[%d] = %.20f;\n", nd, a);
+    //   //printf("teste[%d] = %.30lf;\n", nd, static_cast<double>(a));
+    //   H[nd] = static_cast<double>(d_og[(position * n_dim) + nd]);
+    //
+    // }
 
-    //printf(" | R: ");
-    for( int nd = 0; nd < n_dim; nd++ ){
-      //printf("teste[%d] = %.20f;\n", nd, a);
-      //printf("teste[%d] = %.30lf;\n", nd, static_cast<double>(a));
-      H[nd] = static_cast<double>(d_og[(position * n_dim) + nd]);
+    // // printf("\n");
+    // double tini, tend;
+    // tini = stime();
+    // hjres = hj->optimize(1000000, H.data());
+    // tend = stime();
 
-    }
-
+    // printf(" | Conformation: \n | ");
+    // for( int nd = 0; nd < n_dim; nd++ ){
+    //  printf("%.30lf ", H[nd]);
+    //  // printf("teste[%d] = %.30lf;\n", nd, H[nd]);
+    // }
     // printf("\n");
-    double tini, tend;
-    tini = stime();
-    hjres = hj->optimize(1000000, H.data());
-    tend = stime();
 
-    printf(" | Conformation: \n | ");
-    for( int nd = 0; nd < n_dim; nd++ ){
-     printf("%.30lf ", H[nd]);
-     // printf("teste[%d] = %.30lf;\n", nd, H[nd]);
-    }
-    printf("\n");
+    // printf(" | Execution: %-2d Overall Best: %+.4f -> %+.4lf GPU Time (s): %.8f and HJ Time (s): %.8f\n", run, static_cast<float>(*it), hjres, time/1000.0, tend-tini);
+    printf(" | Execution: %-2d Overall Best: %+.4f GPU Time (ms): %.8f\n", run, static_cast<float>(*it), time);
 
-    printf(" | Execution: %-2d Overall Best: %+.4f -> %+.4lf GPU Time (s): %.8f and HJ Time (s): %.8f\n", run, static_cast<float>(*it), hjres, time/1000.0, tend-tini);
-
-    stats.push_back(std::make_pair(hjres, time));
+    // stats.push_back(std::make_pair(hjres, time));
+    stats.push_back(std::make_pair(static_cast<float>(*it), time));
 
     jde->reset();
   }

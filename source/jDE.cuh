@@ -19,9 +19,12 @@ class jDE {
 protected:
   uint NP;
   uint n_dim;
-  uint n_threads;
-  uint n_threads_2;
-  uint n_blocks;
+
+  dim3 NT_A;
+  dim3 NB_A;
+
+  dim3 NT_B;
+  dim3 NB_B;
 
   float x_min;
   float x_max;
@@ -41,10 +44,6 @@ protected:
 public:
   jDE( uint, uint, float, float );
   ~jDE();
-
-  /* auxiliar functions */
-  uint iDivUp(uint a, uint b);
-  uint nextPowerOf2(uint);
 
   /* jDE functions */
   void run(float *, float *);

@@ -10,8 +10,10 @@ protected:
   uint ID;
   uint n_dim;
   uint ps;
-  uint n_threads;
-  uint n_blocks;
+  uint protein_length;
+
+  dim3 NT;
+  dim3 NB;
 public:
 
   Benchmarks();

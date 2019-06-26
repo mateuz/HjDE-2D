@@ -4,9 +4,8 @@ Benchmarks::Benchmarks()
 {
   min = -100.0;
   max = +100.0;
-  n_threads = 1;
-  n_blocks = 1;
   n_dim = 100;
+  protein_length = 1;
 }
 
 Benchmarks::~Benchmarks()
@@ -35,17 +34,17 @@ void Benchmarks::setMax( float _max ){
 }
 
 void Benchmarks::setThreads( uint _n){
-  n_threads = _n;
+  NT.x = _n;
 }
 
 void Benchmarks::setBlocks( uint _n ){
-  n_blocks = _n;
+  NB.x = _n;
 }
 
 uint Benchmarks::getThreads(){
-  return n_threads;
+  return NT.x;
 }
 
 uint Benchmarks::getBlocks(){
-  return n_blocks;
+  return NB.x;
 }

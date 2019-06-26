@@ -20,10 +20,10 @@ F2DAB::F2DAB( uint _dim, uint _ps ):Benchmarks()
   ID = 1001;
 
   // get the next multiple of 32;
-  n_threads = 32 * ceil((double) n_dim / 32.0);
+  NT.x = 32 * ceil((double) n_dim / 32.0);
 
   //one block per population member
-  n_blocks = ps;
+  NB.x = ps;
 
   // printf("nb: %d e nt: %d\n", n_blocks, n_threads);
 
@@ -240,6 +240,6 @@ __global__ void computeK_2DAB_S(float *x, float *f){
 }
 
 void F2DAB::compute(float * x, float * f){
-  computeK_2DAB_P<<< ps, 128 >>>(x, f);
+  computeK_2DAB_P<<< NB, NT >>>(x, f);
   checkCudaErrors(cudaGetLastError());
 }

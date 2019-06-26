@@ -28,20 +28,19 @@ jDE::jDE( uint _s, uint _ndim, float _x_min, float _x_max ):
   checkCudaErrors(cudaMalloc((void **)&d_states, NP * sizeof(curandStateXORWOW_t)));
   thrust::sequence(thrust::device, rseq, rseq + NP);
 
-  n_threads = 32;
-  n_blocks = iDivUp(NP, n_threads);
-  //printf("nThreads(): %u nBlocks(): %u\n", nt, nb);
+  NT_A.x = 32;
+  NB_A.x = (NP%32)? (NP/32)+1 : NP/32;
 
-  n_threads_2 = nextPowerOf2(n_dim);
-  //printf("#2 nThreads(): %d\n", n_threads_2);
+  NT_B.x = 32 * ceil((double) n_dim / 32.0);
+  NB_B.x = NP;
 
   std::random_device rd;
   unsigned int seed = rd();
-  setup_kernel<<<n_blocks, n_threads>>>(d_states, seed);
+  setup_kernel<<<NT_A, NB_A>>>(d_states, seed);
   checkCudaErrors(cudaGetLastError());
 
   checkCudaErrors(cudaMalloc((void **)&d_states2, NP * n_dim * sizeof(curandStateXORWOW_t)));
-  sk2<<<NP, n_threads_2>>>(d_states2, seed);
+  sk2<<<NB_B, NT_B>>>(d_states2, seed);
   checkCudaErrors(cudaGetLastError());
 }
 
@@ -65,29 +64,8 @@ void jDE::reset(){
   thrust::fill(thrust::device, T_CR, T_CR + NP, 0.90);
 }
 
-uint jDE::iDivUp(uint a, uint b)
-{
-  return (a%b)? (a/b)+1 : a/b;
-}
-
-uint jDE::nextPowerOf2(uint n){
-  uint count = 0;
-
-  // First n in the below condition
-  // is for the case where n is 0
-  if(n && !(n & (n - 1)))
-    return n;
-
-  while( n != 0 ){
-    n >>= 1;
-    count++;
-  }
-
-  return 1 << count;
-}
-
 void jDE::update(){
-  updateK<<<n_blocks, n_threads>>>(d_states, F, CR, T_F, T_CR);
+  updateK<<<NB_A, NT_A>>>(d_states, F, CR, T_F, T_CR);
   checkCudaErrors(cudaGetLastError());
 }
 
@@ -97,28 +75,22 @@ void jDE::update(){
  * fng == fitness of the new offspring
  */
 void jDE::run(float * og, float * ng){
-  //DE<<<n_blocks, n_threads>>>(d_states, og, ng, T_F, T_CR, fseq);
-  //printf("NB: %d, NT: %d\n", NP, n_threads_2);
-
-  rand_DE<<<NP, n_threads_2>>>(d_states2, og, ng, T_F, T_CR, fseq);
+  rand_DE<<<NB_B, NT_B>>>(d_states2, og, ng, T_F, T_CR, fseq);
   checkCudaErrors(cudaGetLastError());
 }
 
 void jDE::run_b(float * og, float * ng, float * bg, float * fog, float * fng, uint b_id){
-  // printf("ID %d\n", b_id);
-
-  best_DE<<<NP, n_threads_2>>>(og, ng, bg, fog, fng, b_id);
-  // cudaDeviceSynchronize();
+  best_DE<<<NB_B, NT_B>>>(og, ng, bg, fog, fng, b_id);
   checkCudaErrors(cudaGetLastError());
 }
 
 void jDE::index_gen(){
-  iGen<<<n_blocks, n_threads>>>(d_states, rseq, fseq);
+  iGen<<<NB_A, NT_A>>>(d_states, rseq, fseq);
   checkCudaErrors(cudaGetLastError());
 }
 
 void jDE::selection(float * og, float * ng, float * fog, float * fng){
-  selectionK<<<n_blocks, n_threads>>>(og, ng, fog, fng);
+  selectionK<<<NB_A, NT_A>>>(og, ng, fog, fng);
   checkCudaErrors(cudaGetLastError());
 }
 
@@ -142,7 +114,7 @@ void jDE::crowding_selection(
 
   // printf("NP: %d\n", NP);
   for( uint p = 0; p < NP; p++ ){
-    crowding<<<n_blocks, n_threads>>>(ng, og, p, res);
+    crowding<<<NB_A, NT_A>>>(ng, og, p, res);
     checkCudaErrors(cudaGetLastError());
     // thrust::device_vector<float> d_res( res, res+NP);
     // thrust::host_vector<float> h_res = d_res;
