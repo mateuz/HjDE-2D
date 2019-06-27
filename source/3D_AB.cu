@@ -54,7 +54,7 @@ F3DAB::F3DAB( uint _dim, uint _ps, uint _pl ):Benchmarks()
     exit(-1);
   }
 
-  checkCudaErrors(cudaMemcpyToSymbol(S_2DAB, (void *) s_2dab, 150 * sizeof(char)));
+  checkCudaErrors(cudaMemcpyToSymbol(S_AB, (void *) s_2dab, 150 * sizeof(char)));
   checkCudaErrors(cudaMemcpyToSymbol(PL, &protein_length, sizeof(int)));
 }
 
@@ -82,15 +82,15 @@ __global__ void computeK_3DAB_P(float * x, float * f){
   if( id_d == 0 ){
     points[0] = make_float3(0.0f, 0.0f, 0.0f);
     points[1] = make_float3(0.0f, 1.0f, 0.0f);
-    points[2] = make_float3(cosf(x[THETA + 0]), 1 + sinf(x[THETA + 0]), 0.0f);
+    points[2] = make_float3(cosf(x[THETA]), 1.0 + sinf(x[THETA]), 0.0f);
 
     float3 aux = points[2];
     for( uint16_t i = 3; i < N; i++ ){
       aux.x += cosf(x[THETA + i - 2]) * cosf(x[BETA + i - 3]);
       aux.y += sinf(x[THETA + i - 2]) * cosf(x[BETA + i - 3]);
-      aux.z += sinf(x[BETA + i - 3]);
+      aux.z += sinf(x[BETA  + i - 3]);
 
-      points[3] = aux;
+      points[i] = aux;
     }
   }
 
@@ -101,26 +101,24 @@ __global__ void computeK_3DAB_P(float * x, float * f){
 
   __syncthreads();
 
-  if( id_d == 0 ){
-    printf("Pontos: \n");
-    for( uint16_t i = 0; i < N; i++ ){
-      printf("%.3f %.3f %.3f\n", points[i].x, points[i].y, points[i].z);
-    }
-  }
+  // if( id_d == 0 ){
+  //   printf("Pontos: \n");
+  //   for( uint16_t i = 0; i < N; i++ ){
+  //     printf("%.3f %.3f %.3f\n", points[i].x, points[i].y, points[i].z);
+  //   }
+  // }
 
-  float C, n3df;
+  float C, n3df, _v2;
   if( id_d < (N - 2) ){
     v1[id_d] = (1.0f - cosf(x[THETA + id_d]));
 
-    float _v2 = 0.0;
-
     float3 P1 = points[id_d];
 
+    _v2 = 0.0;
     for( uint16_t j = (id_d + 2); j < N; j++ ){
-      //C = _C(id_d, j);
-      if( S_2DAB[id_d] == 'A' && S_2DAB[j] == 'A' )
+      if( S_AB[id_d] == 'A' && S_AB[j] == 'A' )
         C = 1.0;
-      else if( S_2DAB[id_d] == 'B' && S_2DAB[j] == 'B' )
+      else if( S_AB[id_d] == 'B' && S_AB[j] == 'B' )
         C = 0.5;
       else
         C = -0.5;
@@ -129,28 +127,28 @@ __global__ void computeK_3DAB_P(float * x, float * f){
 
       n3df = norm3df(D.x, D.y, D.z);
 
-      _v2 += ( 1.0f / powf(n3df, 12.0f) - C / powf(n3df, 6.0f) );
+      _v2 += ( 1.0 / powf(n3df, 12.0) - C / powf(n3df, 6.0) );
     }
     v2[id_d] = _v2;
   }
 
   __syncthreads();
 
-  if( id_d < 64 && ndim > 64 ){
+  if( id_d < 64 && N > 64 ){
     v1[id_d] += v1[id_d + 64];
     v2[id_d] += v2[id_d + 64];
   }
 
   __syncthreads();
 
-  if( id_d < 32 && ndim > 32 ){
+  if( id_d < 32 && N > 32 ){
     v1[id_d] += v1[id_d + 32];
     v2[id_d] += v2[id_d + 32];
   }
 
   __syncthreads();
 
-  if( id_d < 16 && ndim > 16 ){
+  if( id_d < 16 && N > 16 ){
     v1[id_d] += v1[id_d + 16];
     v2[id_d] += v2[id_d + 16];
   }
@@ -182,12 +180,72 @@ __global__ void computeK_3DAB_P(float * x, float * f){
     v1[id_d] += v1[id_d + 1];
     v2[id_d] += v2[id_d + 1];
 
-    f[id_p] = v1[0]/4.0 + v2[0]*4.0;
+    f[id_p] = (v1[0] / 4.0) + (v2[0] * 4.0);
+
+    // printf("v1: %.4lf v2: %.4lf\n", v1[0]/4, 4*v2[0]);
+    // printf("Final energy value: %.8lf\n", v1[0]/4 + 4*v2[0]);
   }
 }
 
 __global__ void computeK_3DAB_S(float *x, float *f){
-  /* empty for a while */
+  uint id_p = threadIdx.x + (blockIdx.x * blockDim.x);
+  uint ps = params.ps;
+  uint ndim = params.n_dim;
+  int N    = PL;
+
+  if( id_p < ps ){
+    uint THETA = id_p * ndim;
+    uint BETA  = id_p * ndim + (N-2);
+
+    float3 points[128];
+
+    points[0] = make_float3(0.0f, 0.0f, 0.0f);
+    points[1] = make_float3(0.0f, 1.0f, 0.0f);
+    points[2] = make_float3(cosf(x[THETA + 0]), 1 + sinf(x[THETA + 0]), 0.0f);
+
+    float3 aux = points[2];
+    for( uint16_t i = 3; i < N; i++ ){
+      aux.x += cosf(x[THETA + i - 2]) * cosf(x[BETA + i - 3]);
+      aux.y += sinf(x[THETA + i - 2]) * cosf(x[BETA + i - 3]);
+      aux.z += sinf(x[BETA + i - 3]);
+
+      points[i] = aux;
+    }
+
+    __syncthreads();
+
+    // printf("Pontos: \n");
+    // for( uint16_t i = 0; i < N; i++ ){
+    //   printf("%.3f %.3f %.3f\n", points[i].x, points[i].y, points[i].z);
+    // }
+
+    float v1 = 0.0, v2 = 0.0, C, n3df;
+
+    for( uint16_t i = 0; i < N-2; i++ ){
+      v1 += (1.0f - cosf(x[THETA + i]));
+
+      float3 P1 = points[i];
+
+      for( uint16_t j = i + 2; j < N; j++ ){
+        if( S_AB[i] == 'A' && S_AB[j] == 'A' ){
+  				C = 1;
+        } else if( S_AB[i] == 'B' && S_AB[j] == 'B' ){
+  				C = 0.5;
+  			} else {
+  				C = -0.5;
+        }
+
+        float3 D = P1 - points[j];
+        n3df = norm3df(D.x, D.y, D.z);
+
+        v2 += ( 1.0f / powf(n3df, 12.0f) - C / powf(n3df, 6.0f) );
+     }
+  	}
+    // printf("v1: %.4f v2: %.4f\n", v1/4, 4*v2);
+    // printf("Final energy value: %.8lf\n", v1/4 + 4*v2);
+
+   	f[id_p] = (v1 / 4.0) + (4.0 * v2);
+  }
 }
 
 void F3DAB::compute(float * x, float * f){

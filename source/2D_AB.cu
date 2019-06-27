@@ -51,7 +51,7 @@ F2DAB::F2DAB( uint _dim, uint _ps ):Benchmarks()
     exit(-1);
   }
 
-  checkCudaErrors(cudaMemcpyToSymbol(S_2DAB, (void *) s_2dab, 150 * sizeof(char)));
+  checkCudaErrors(cudaMemcpyToSymbol(S_AB, (void *) s_2dab, 150 * sizeof(char)));
 }
 
 F2DAB::~F2DAB()
@@ -62,9 +62,9 @@ F2DAB::~F2DAB()
 __device__ float _C( uint i, uint j ){
   float c;
 
-  if( S_2DAB[i] == 'A' && S_2DAB[j] == 'A' )
+  if( S_AB[i] == 'A' && S_AB[j] == 'A' )
     c = 1.0;
-  else if( S_2DAB[i] == 'B' && S_2DAB[j] == 'B' )
+  else if( S_AB[i] == 'B' && S_AB[j] == 'B' )
     c = 0.5;
   else
     c = -0.5;

@@ -29,7 +29,7 @@ extern __constant__ Configuration params;
 extern __constant__ float F_Lower;
 extern __constant__ float F_Upper;
 extern __constant__ float T;
-extern __constant__ char S_2DAB[150];
+extern __constant__ char S_AB[150];
 extern __constant__ int PL;
 
 #endif
