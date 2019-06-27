@@ -175,35 +175,34 @@ __global__ void computeK_2DAB_P(float * x, float * f){
 }
 
 __global__ void computeK_2DAB_S(float *x, float *f){
-   uint id_p = threadIdx.x + (blockIdx.x * blockDim.x);
-   uint ps = params.ps;
-   uint ndim = params.n_dim;
+  uint id_p = threadIdx.x + (blockIdx.x * blockDim.x);
+  uint ps = params.ps;
+  uint ndim = params.n_dim;
 
-   // if( id_p == 0 ){
-   //   printf("Otimizando a string: %s\n", S_2DAB);
-   //   printf("Nº de dimensões: %d\n", params.n_dim);
-   //   printf("Nº de Indivíduos: %d\n", params.ps);
-   //   printf("x in [%.3f, %.3f]\n", params.x_min, params.x_max);
-   //
-   //   // for( int i = 0; i < params.n_dim*params.ps; i++ ){
-   //   //   printf("teste[%d] = %.3f;\n", i, (double)x[i]);
-   //   // }
-   // }
+  // if( id_p == 0 ){
+  //   printf("Otimizando a string: %s\n", S_2DAB);
+  //   printf("Nº de dimensões: %d\n", params.n_dim);
+  //   printf("Nº de Indivíduos: %d\n", params.ps);
+  //   printf("x in [%.3f, %.3f]\n", params.x_min, params.x_max);
+  //
+  //   // for( int i = 0; i < params.n_dim*params.ps; i++ ){
+  //   //   printf("teste[%d] = %.3f;\n", i, (double)x[i]);
+  //   // }
+  // }
 
-   if( id_p < ps ){
+  if( id_p < ps ){
+    uint id_d = id_p * ndim;
 
-     uint id_d = id_p * ndim;
+    AB_2D amino_acid[150];
 
-     AB_2D amino_acid[150];
+    float a_ab,b_ab,c_ab,d_ab,d_x,d_y;
 
-     float a_ab,b_ab,c_ab,d_ab,d_x,d_y;
+    amino_acid[0].x = 0;
+    amino_acid[0].y = 0;
+    amino_acid[1].x = 1;
+    amino_acid[1].y = 0;
 
-   	 amino_acid[0].x = 0;
-     amino_acid[0].y = 0;
-   	 amino_acid[1].x = 1;
-   	 amino_acid[1].y = 0;
-
-    for (int i = 1; i < (ndim - 1); i++){
+    for( int i = 1; i < (ndim - 1); i++ ){
       a_ab = amino_acid[i].x-amino_acid[i-1].x;
       b_ab = amino_acid[i].y-amino_acid[i-1].y;
       amino_acid[i+1].x = amino_acid[i].x+a_ab*cosf(x[id_d + i - 1])-b_ab*sinf(x[id_d + i - 1]);
@@ -214,12 +213,12 @@ __global__ void computeK_2DAB_S(float *x, float *f){
 
     float v1 = 0.0f;
     float v2 = 0.0f;
-    for (int i = 0; (i < (ndim-2)); i++) {
+    for( int i = 0; (i < (ndim-2)); i++ ){
       v1 += (1.0 - cosf(x[id_d + i]) ) / 4.0;
-      for (int j = i+2; j < ndim; j++) {
-        if (S_2DAB[i] == 'A' && S_2DAB[j] == 'A') //AA bond
+      for( int j = i+2; j < ndim; j++ ){
+        if (S_AB[i] == 'A' && S_AB[j] == 'A') //AA bond
           c_ab = 1.0;
-        else if (S_2DAB[i] == 'B' && S_2DAB[j] == 'B') //BB bond
+        else if (S_AB[i] == 'B' && S_AB[j] == 'B') //BB bond
           c_ab = 0.5;
         else
           c_ab = -0.5; //AB or BA bond
@@ -228,15 +227,11 @@ __global__ void computeK_2DAB_S(float *x, float *f){
         d_y = amino_acid[i].y - amino_acid[j].y;
 
         d_ab = sqrtf( (d_x * d_x) + (d_y * d_y) );
-        // printf("i: %d %c j: %d %c %.4lf, %.4lf\n", i, S_2DAB[i], j, S_2DAB[j], d_ab, c_ab);
         v2 += 4.0 * ( 1.0 / powf(d_ab, 12.0) - c_ab / powf(d_ab, 6.0) );
-        // printf("%d %d %.4lf\n", i, j, v2);
       }
-      // printf("v1 from %d is %.4f\n", i, v1);
     }
     f[id_p] = v1 + v2;
-    // printf("GPU %d -> %.4lf %.4lf\n", id_p, v1, v2);
-   }
+  }
 }
 
 void F2DAB::compute(float * x, float * f){

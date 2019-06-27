@@ -228,23 +228,22 @@ __global__ void computeK_3DAB_S(float *x, float *f){
 
       for( uint16_t j = i + 2; j < N; j++ ){
         if( S_AB[i] == 'A' && S_AB[j] == 'A' ){
-  				C = 1;
+          C = 1;
         } else if( S_AB[i] == 'B' && S_AB[j] == 'B' ){
-  				C = 0.5;
-  			} else {
-  				C = -0.5;
+          C = 0.5;
+        } else {
+          C = -0.5;
         }
 
         float3 D = P1 - points[j];
         n3df = norm3df(D.x, D.y, D.z);
 
         v2 += ( 1.0f / powf(n3df, 12.0f) - C / powf(n3df, 6.0f) );
-     }
-  	}
+      }
+    }
     // printf("v1: %.4f v2: %.4f\n", v1/4, 4*v2);
     // printf("Final energy value: %.8lf\n", v1/4 + 4*v2);
-
-   	f[id_p] = (v1 / 4.0) + (4.0 * v2);
+    f[id_p] = (v1 / 4.0) + (4.0 * v2);
   }
 }
 
