@@ -25,7 +25,6 @@ $ make
 $ "runs, r"      - Number of Executions
 $ "pop_size, p"  - Population Size
 $ "dim, d"       - Number of Dimensions {13, 21, 34, 38, 55, 64, 98, 120}
-$ "func_obj, o"  - Function to Optimize {1001}
 $ "max_eval, e"  - Number of Function Evaluations
 $ "help, h"      - Show this help
 ```
