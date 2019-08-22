@@ -37,3 +37,127 @@ std::string toString(uint id){
       return "Unknown";
   }
 }
+
+void save_json(std::vector< std::tuple<uint, float, float, float, float > >& data, std::ofstream& ofs  ){
+
+  Json::Value g1(Json::arrayValue);
+  Json::Value y1(Json::arrayValue);
+
+  for( auto it = data.begin(); it != data.end(); it++ ){
+    g1.append( std::get<0>(*it) );
+    y1.append( std::get<1>(*it) );
+  }
+
+  Json::Value event;
+  Json::Value conjunto(Json::arrayValue);
+  Json::Value go;
+
+  //first
+  go["type"] = "scatter";
+  go["line"]["color"] = "rgb(24, 0, 243)";
+  go["mode"] = "lines";
+  go["name"] = "best";
+  go["x"] = g1; //<valores de x do best>; // geração
+  go["y"] = y1; //<valores de y do best>; // valores best de cada geração
+
+  conjunto.append(go);
+  go.clear();
+
+  event["data"] = conjunto;
+
+  // layout config
+  event["layout"]["font"]["size"] = 16;
+  event["layout"]["font"]["color"] = "rgb(0, 0, 0)";
+  event["layout"]["title"]["text"] = "";
+
+  event["layout"]["xaxis"]["type"] = "linear";
+  event["layout"]["xaxis"]["title"]["text"] = "Iteration";
+  event["layout"]["xaxis"]["mirror"] = "ticks";
+  event["layout"]["xaxis"]["showline"] = true;
+  event["layout"]["xaxis"]["autorange"] = true;
+  event["layout"]["xaxis"]["linecolor"] = "rgb(0, 0, 0)";
+
+  event["layout"]["yaxis"]["type"] = "linear";
+  event["layout"]["yaxis"]["title"]["text"] = "Energy Value";
+  event["layout"]["yaxis"]["mirror"] = "ticks";
+  event["layout"]["yaxis"]["showline"] = true;
+  event["layout"]["yaxis"]["autorange"] = true;
+  event["layout"]["yaxis"]["linecolor"] = "rgb(0, 0, 0)";
+
+  event["layout"]["legend"]["x"] = 1;
+  event["layout"]["legend"]["y"] = 1;
+  event["layout"]["legend"]["xanchor"] = "auto";
+  event["layout"]["legend"]["borderwidth"] = 0;
+
+  event["layout"]["autosize"] = true;
+  event["layout"]["dragmode"] = "pan";
+
+  // Json::FastWriter fast;
+  //
+  // Json::StyledWriter styled;
+  //
+  // std::string sFast = fast.write(event);
+  // std::string sStyled = styled.write(event);
+  //
+  // std::cout << "Normal\n" << event << "Fast\n" << sFast << "Styled:\n" << sStyled << std::endl;
+
+  Json::StyledStreamWriter styledStream;
+  styledStream.write(ofs, event);
+}
+
+void save_diversity(
+  std::vector< std::tuple<uint, float, float, float, float > >& data,
+  std::ofstream& ofs
+){
+  Json::Value g1(Json::arrayValue);
+  Json::Value y1(Json::arrayValue);
+
+  for( auto it = data.begin(); it != data.end(); it++ ){
+    g1.append( std::get<0>(*it) );
+    y1.append( std::get<4>(*it) );
+  }
+
+  Json::Value event;
+  Json::Value conjunto(Json::arrayValue);
+  Json::Value go;
+
+  //first
+  go["type"] = "scatter";
+  go["line"]["color"] = "rgb(5, 122, 12)";
+  go["line"]["dash"] = "solid";
+  go["line"]["width"] = 3;
+  go["mode"] = "lines";
+  go["x"] = g1;
+  go["y"] = y1;
+
+  conjunto.append(go);
+  go.clear();
+
+  event["data"] = conjunto;
+
+  // layout config
+  event["layout"]["font"]["size"] = 16;
+  event["layout"]["font"]["color"] = "rgb(0, 0, 0)";
+  event["layout"]["title"]["text"] = "";
+
+  event["layout"]["xaxis"]["type"] = "linear";
+  event["layout"]["xaxis"]["title"]["text"] = "Iteration";
+  event["layout"]["xaxis"]["mirror"] = "ticks";
+  event["layout"]["xaxis"]["showline"] = true;
+  event["layout"]["xaxis"]["autorange"] = true;
+  event["layout"]["xaxis"]["gridwidth"] = 2;
+  event["layout"]["xaxis"]["linecolor"] = "rgb(0, 0, 0)";
+
+  event["layout"]["yaxis"]["type"] = "linear";
+  event["layout"]["yaxis"]["title"]["text"] = "Diversity";
+  event["layout"]["yaxis"]["mirror"] = "ticks";
+  event["layout"]["yaxis"]["showline"] = true;
+  event["layout"]["yaxis"]["autorange"] = true;
+  event["layout"]["yaxis"]["linecolor"] = "rgb(0, 0, 0)";
+
+  event["layout"]["autosize"] = true;
+  event["layout"]["showlegend"] = false;
+
+  Json::StyledStreamWriter styledStream;
+  styledStream.write(ofs, event);
+}

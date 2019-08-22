@@ -8,6 +8,8 @@
 #include "2D_AB.cuh"
 #include "HookeJeeves.hpp"
 
+#define SAVE 1
+
 int main(int argc, char * argv[]){
   srand(time(NULL));
   uint n_runs, NP, n_evals, PL, f_id = 1001;
@@ -96,6 +98,9 @@ int main(int argc, char * argv[]){
   std::mt19937 rng(seed);
   std::uniform_int_distribution<int> random_i(0, NP-1);//[0, NP-1]
 
+  // stores the iteration, best, mean, worst, and Isd;
+  std::vector< std::tuple<uint, float, float, float, float > > data;
+
   for( uint run = 1; run <= n_runs; run++ ){
     // Randomly initiate the population
 
@@ -111,11 +116,63 @@ int main(int argc, char * argv[]){
 
     //warm-up
     B->compute(p_og, p_fog);
+
+    // get the best index
+    it   = thrust::min_element(thrust::device, d_fog.begin(), d_fog.end());
+    b_id = thrust::distance(d_fog.begin(), it);
+
     int g = 0;
+    float gb_e = static_cast<float>(*it);
 
     cudaEventRecord(start);
     for( uint evals = 0; evals < n_evals; ){
-      g++;
+      if( SAVE == 1 ){
+        // copy data to host
+        h_og = d_og;
+        h_fog = d_fog;
+
+        // look for the best solution
+        thrust::host_vector<float>::iterator it = thrust::min_element(thrust::host, h_fog.begin(), h_fog.end());
+        float best = static_cast<float>(*it);
+
+        if( gb_e < best ) {
+          best = gb_e;
+        }
+
+        // look for the average
+        float average = 0.0;
+        // average = (thrust::reduce(thrust::host, h_fog.begin(), h_fog.end())) / (NP*1.0);
+
+        // look for the worst solution
+        // it = thrust::max_element(thrust::host, h_fog.begin(), h_fog.end());
+        float worst = 0.0;
+        // worst = static_cast<float>(*it);
+
+        //Diversity calc :: moment of inertia about the centroids
+        std::vector<float> ci;
+        for( int d = 0; d < n_dim; d++ ){
+          float _ci = 0.0;
+          for( int p = 0; p < NP; p++ ){
+            _ci += h_og[(p * n_dim) + d] / (float) NP;
+          }
+          ci.push_back(_ci);
+        }
+
+        float Isd = 0.0, _t1, _t2;
+        for( int d = 0; d < n_dim; d++ ){
+          _t1 = 0.0;
+          for( int p = 0; p < NP; p++ ){
+            _t2 = h_og[(p * n_dim) + d] - ci[d];
+            _t1 += (_t2 * _t2);
+          }
+          Isd += sqrt(_t1 / (NP - 1));
+        }
+        Isd /= (double) n_dim;
+        std::cout << best << " :: " << average << " :: " << worst << " :: " << Isd << std::endl;
+        if( best < 0.0 ){
+          data.push_back( std::make_tuple (g, best, average, worst, Isd) );
+        }
+      }
 
       jde->index_gen();
       jde->run(p_og, p_ng);
@@ -125,6 +182,7 @@ int main(int argc, char * argv[]){
       // get the best index
       it   = thrust::min_element(thrust::device, d_fog.begin(), d_fog.end());
       b_id = thrust::distance(d_fog.begin(), it);
+      gb_e = static_cast<float>(*it);
 
       jde->run_b(p_og, p_ng, p_bg, p_fog, p_fng, b_id);
       B->compute(p_bg, p_fbg);
@@ -154,6 +212,7 @@ int main(int argc, char * argv[]){
         for( int d = 0; d < n_dim; d++ )
           d_og[(b_idx * n_dim) + d] = static_cast<float>(H[d]);
       }
+      g++;
     }
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
@@ -181,6 +240,8 @@ int main(int argc, char * argv[]){
     printf("\n");
 
     printf(" | Execution: %-2d Overall Best: %+.4f -> %+.4lf GPU Time (s): %.8f and HJ Time (s): %.8f\n", run, static_cast<float>(*it), hjres, time/1000.0, tend-tini);
+
+    data.push_back( std::make_tuple (g, hjres, 0.0, 0.0, 0.0) );
 
     stats.push_back(std::make_pair(hjres, time));
 
@@ -214,6 +275,29 @@ int main(int argc, char * argv[]){
   printf(" | \t mean:         %+.3lf\n", T_mean);
   printf(" | \t std:          %+.3lf\n", T_std);
   printf(" +==============================================================+ \n");
+  
+  if( SAVE == 1 ){
+    std::ofstream ofs_csv;
+    std::ofstream ofs_json_convergence;
+    std::ofstream ofs_json_diversity;
+
+    ofs_csv.open("results/output.csv", std::ofstream::out);
+    ofs_json_convergence.open("results/output_conv.json", std::ofstream::out);
+    ofs_json_diversity.open("results/output_div.json", std::ofstream::out);
+
+    if( not ofs_csv.is_open() )
+      std::cout << "Error opening data output file" << std::endl;
+    else {
+      ofs_csv << "gen,global_best,global_average,global_worst,diversity\n";
+      for( auto it = data.begin(); it != data.end(); it++ )
+        ofs_csv << std::get<0>(*it) << "," << std::get<1>(*it) << "," << std::get<2>(*it) << "," << std::get<3>(*it) << "," << std::get<4>(*it) << "\n";
+
+      save_json(data, ofs_json_convergence);
+      save_diversity(data, ofs_json_diversity);
+
+      ofs_csv.close();
+    }
+  }
 
   return 0;
 }
